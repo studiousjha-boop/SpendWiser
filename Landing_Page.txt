@@ -1,0 +1,56 @@
+
+
+ Add comprehensive **Terms and Conditions** and **Privacy Policy** pages to my Expense Tracker web application.
+
+ Requirements:
+
+ 1. Create dedicated sections/pages for:
+
+    * Terms and Conditions
+    * Privacy Policy
+
+ 2. Update the `@templates/base.html` file to include footer links:
+
+    * Terms & Conditions
+    * Privacy Policy
+
+ 3. The design should match the existing styling and layout of the application.
+
+ 4. Terms and Conditions should include:
+
+    * Acceptance of terms
+    * User responsibilities
+    * Accuracy of financial data disclaimer
+    * Limitation of liability
+    * Account termination
+    * Changes to terms
+    * Contact information
+
+ 5. Privacy Policy should include:
+
+    * Information collected (account details, expense records, usage data)
+    * How data is used
+    * Data storage and security
+    * Third-party services (if applicable)
+    * Cookies/session usage
+    * User rights regarding their data
+    * Contact information
+
+ 6. Create appropriate routes/views for both pages and ensure navigation works correctly.
+
+ 7. Use professional, production-ready legal text suitable for an Expense Tracker application.
+
+ 8. Ensure the pages are responsive and accessible on mobile and desktop devices.
+
+ 9. Add the current year dynamically in the footer if the application already supports template variables.
+
+ 10. Provide all necessary code changes, including:
+
+     * Updated `templates/base.html`
+     * New HTML templates
+     * Route/controller changes
+     * Any URL configuration updates
+
+ Assume the application is built using Flask with Jinja2 templates unless the existing project structure indicates otherwise. Generate complete code, not placeholders.
+
+do not modify anything else on the page

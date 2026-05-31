@@ -1,4 +1,5 @@
 from flask import Flask, render_template
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -21,6 +22,20 @@ def register():
 def login():
     return render_template("login.html")
 
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@app.context_processor
+def inject_now():
+    return {'now': datetime.utcnow()}
 
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #

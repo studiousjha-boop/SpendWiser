@@ -8,6 +8,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .footer-legal {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-align: center;
+        }
+        .footer-links {
+            margin-top: 5px;
+        }
+        .footer-links a {
+            color: inherit;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -16,7 +35,7 @@
         <div class="nav-inner">
             <a href="{{ url_for('landing') }}" class="nav-brand">
                 <span class="brand-icon">◈</span>
-                <span class="brand-name">Spendly</span>
+                <span class="brand-name">SpendWiser</span>
             </a>
             <div class="nav-links">
                 <a href="{{ url_for('login') }}">Sign in</a>
@@ -32,8 +51,15 @@
     <footer class="footer">
         <div class="footer-inner">
             <span class="brand-icon">◈</span>
-            <span class="footer-name">Spendly</span>
+            <span class="footer-name">SpendWiser</span>
             <p class="footer-copy">Track every rupee. Own your finances.</p>
+            <div class="footer-legal">
+                <p>&copy; {{ now.year }} SpendWiser. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="{{ url_for('terms') }}">Terms & Conditions</a> |
+                    <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+                </div>
+            </div>
         </div>
     </footer>
 
