@@ -19,42 +19,45 @@
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Start tracking free</a>
             <a href="{{ url_for('login') }}" class="btn-ghost">Sign in</a>
+            <button type="button" class="btn-ghost btn-demo" id="openDemoModal" aria-haspopup="dialog" aria-controls="demoModal">
+                <span class="demo-icon" aria-hidden="true">▶</span> See How It Works
+            </button>
         </div>
     </div>
     <div class="hero-visual">
         <div class="mock-card">
             <div class="mock-card-header">
-                <span class="mock-label">March 2026</span>
-                <span class="mock-total">₹12,450</span>
+                <span class="mock-label">April 2026</span>
+                <span class="mock-total">₹8,240</span>
             </div>
             <div class="mock-bars">
                 <div class="mock-bar-row">
-                    <span class="mock-cat">Bills</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar" style="width: 72%"></div>
-                    </div>
-                    <span class="mock-amt">₹4,500</span>
-                </div>
-                <div class="mock-bar-row">
                     <span class="mock-cat">Food</span>
                     <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-2" style="width: 52%"></div>
+                        <div class="mock-bar mock-bar-2" style="width: 68%"></div>
                     </div>
-                    <span class="mock-amt">₹3,200</span>
+                    <span class="mock-amt">₹2,800</span>
                 </div>
                 <div class="mock-bar-row">
-                    <span class="mock-cat">Health</span>
+                    <span class="mock-cat">Travel</span>
                     <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-3" style="width: 33%"></div>
+                        <div class="mock-bar mock-bar-3" style="width: 45%"></div>
                     </div>
-                    <span class="mock-amt">₹2,050</span>
+                    <span class="mock-amt">₹1,850</span>
                 </div>
                 <div class="mock-bar-row">
-                    <span class="mock-cat">Transport</span>
+                    <span class="mock-cat">Bills</span>
                     <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-4" style="width: 28%"></div>
+                        <div class="mock-bar" style="width: 38%"></div>
                     </div>
-                    <span class="mock-amt">₹1,800</span>
+                    <span class="mock-amt">₹1,560</span>
+                </div>
+                <div class="mock-bar-row">
+                    <span class="mock-cat">Misc</span>
+                    <div class="mock-bar-track">
+                        <div class="mock-bar mock-bar-4" style="width: 30%"></div>
+                    </div>
+                    <span class="mock-amt">₹1,230</span>
                 </div>
             </div>
         </div>
@@ -88,5 +91,130 @@
         <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
     </div>
 </section>
+
+<!-- Demo video modal -->
+<div class="video-modal" id="demoModal" role="dialog" aria-modal="true" aria-labelledby="demoModalTitle" aria-hidden="true" hidden>
+    <div class="video-modal-backdrop" data-close-modal></div>
+    <div class="video-modal-dialog" role="document">
+        <div class="video-modal-header">
+            <h2 class="video-modal-title" id="demoModalTitle">See how Spendly works</h2>
+            <button type="button" class="video-modal-close" data-close-modal aria-label="Close video">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="video-modal-body">
+            <div class="video-modal-frame">
+                <iframe
+                    id="demoVideo"
+                    title="Spendly product demo"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0';
+
+    var modal = document.getElementById('demoModal');
+    var openBtn = document.getElementById('openDemoModal');
+    var iframe = document.getElementById('demoVideo');
+    if (!modal || !openBtn || !iframe) return;
+
+    var lastFocused = null;
+    var isOpen = false;
+
+    function getFocusable() {
+        return modal.querySelectorAll(
+            'button, [href], iframe, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+    }
+
+    function openModal() {
+        if (isOpen) return;
+        lastFocused = document.activeElement;
+        modal.hidden = false;
+        // force reflow so the transition runs from the hidden state
+        void modal.offsetWidth;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+
+        // Lazy load the YouTube iframe only when opening
+        if (!iframe.getAttribute('src')) {
+            iframe.setAttribute('src', VIDEO_URL);
+        }
+
+        // Move focus into the modal
+        var focusables = getFocusable();
+        if (focusables.length) focusables[0].focus();
+        isOpen = true;
+    }
+
+    function closeModal() {
+        if (!isOpen) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+
+        // Stop the video by clearing the src
+        iframe.setAttribute('src', '');
+
+        // Wait for the transition to finish before hiding from the a11y tree
+        var onEnd = function () {
+            modal.hidden = true;
+            modal.removeEventListener('transitionend', onEnd);
+        };
+        modal.addEventListener('transitionend', onEnd);
+
+        if (lastFocused && typeof lastFocused.focus === 'function') {
+            lastFocused.focus();
+        }
+        isOpen = false;
+    }
+
+    // Open
+    openBtn.addEventListener('click', openModal);
+
+    // Close on X or backdrop click
+    modal.querySelectorAll('[data-close-modal]').forEach(function (el) {
+        el.addEventListener('click', closeModal);
+    });
+
+    // Close on Escape + simple focus trap
+    document.addEventListener('keydown', function (e) {
+        if (!isOpen) return;
+
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeModal();
+            return;
+        }
+
+        if (e.key === 'Tab') {
+            var focusables = Array.prototype.slice.call(getFocusable());
+            if (!focusables.length) {
+                e.preventDefault();
+                return;
+            }
+            var first = focusables[0];
+            var last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    });
+})();
+</script>
 
 {% endblock %}
