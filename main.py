@@ -1,7 +1,14 @@
+from datetime import datetime, timezone
+
 from flask import Flask, render_template
-from datetime import datetime
+
+from database.db import get_db, init_db, seed_db
 
 app = Flask(__name__)
+
+with app.app_context():
+    init_db()
+    seed_db()
 
 
 # ------------------------------------------------------------------ #
@@ -35,7 +42,7 @@ def privacy():
 
 @app.context_processor
 def inject_now():
-    return {'now': datetime.utcnow()}
+    return {"now": datetime.now(timezone.utc)}
 
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
