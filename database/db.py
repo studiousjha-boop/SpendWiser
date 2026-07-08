@@ -17,6 +17,7 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 from werkzeug.security import generate_password_hash
+from flask import current_app
 
 # Path to the SQLite file – placed in the project root alongside ``main.py``.
 _DB_PATH = Path(__file__).resolve().parents[1] / "spendly.db"
@@ -28,7 +29,17 @@ def get_db():
     The connection uses ``sqlite3.Row`` for dictionary‑style access and enables
     foreign‑key constraints.
     """
-    conn = sqlite3.connect(_DB_PATH)
+    db_path = _DB_PATH
+    try:
+        # Check if we are running in a Flask app context with TESTING enabled
+        if current_app and current_app.config.get("TESTING"):
+            # Use the configured test database path
+            db_path = Path(current_app.config.get("DATABASE", _DB_PATH))
+    except RuntimeError:
+        # Outside of Flask application context
+        pass
+
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
