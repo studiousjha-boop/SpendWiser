@@ -1,9 +1,10 @@
+import sqlite3
 from datetime import datetime, timezone
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from database.db import get_db, init_db, seed_db
+from database.db import get_db, init_db, seed_db, create_user
 
 app = Flask(__name__)
 # In production, this should be loaded from environment variables
@@ -26,46 +27,35 @@ def landing():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        
-        if not name or not email or not password:
-            return render_template("register.html", error="All fields are required.")
-            
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip()
+        password = request.form.get("password") or ""
+        confirm_password = request.form.get("confirm_password") or ""
+
+        # Server-side validation
+        if not name or not email or not password or not confirm_password:
+            flash("All fields are required.")
+            return render_template("register.html")
+
         if len(password) < 8:
-            return render_template("register.html", error="Password must be at least 8 characters long.")
-            
-        conn = get_db()
-        cur = conn.cursor()
-        
-        # Check if user already exists
-        cur.execute("SELECT id FROM users WHERE email = ?", (email,))
-        if cur.fetchone():
-            conn.close()
-            return render_template("register.html", error="An account with this email already exists.")
-            
-        # Insert new user
-        password_hash = generate_password_hash(password)
+            flash("Password must be at least 8 characters long.")
+            return render_template("register.html")
+
+        if password != confirm_password:
+            flash("Passwords do not match.")
+            return render_template("register.html")
+
+        # Insert via helper; create_user raises sqlite3.IntegrityError on a
+        # duplicate email (the users.email column is UNIQUE).
         try:
-            cur.execute(
-                "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                (name, email, password_hash)
-            )
-            user_id = cur.lastrowid
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            conn.close()
-            return render_template("register.html", error=f"Database error: {str(e)}")
-            
-        conn.close()
-        
-        # Store user details in session to log in
-        session["user_id"] = user_id
-        session["user_name"] = name
-        return redirect(url_for("profile"))
-        
+            create_user(name, email, password)
+        except sqlite3.IntegrityError:
+            flash("Email already registered.")
+            return render_template("register.html")
+
+        flash("Account created successfully. Please sign in.")
+        return redirect(url_for("login"))
+
     return render_template("register.html")
 
 

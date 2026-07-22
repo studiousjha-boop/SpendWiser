@@ -41,6 +41,9 @@ def get_db():
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    # Wait on lock contention instead of immediately raising
+    # "database is locked" (the default busy_timeout is 0).
+    conn.execute("PRAGMA busy_timeout = 5000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
@@ -123,3 +126,32 @@ def seed_db():
     )
     conn.commit()
     conn.close()
+
+
+def create_user(name: str, email: str, password: str) -> int:
+    """Create a new user with a hashed password.
+
+    Args:
+        name: User's full name
+        email: User's email (must be unique)
+        password: Plain-text password to be hashed
+
+    Returns:
+        The new user's ID
+
+    Raises:
+        sqlite3.IntegrityError: If email already exists (UNIQUE constraint)
+    """
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        password_hash = generate_password_hash(password)
+        cur.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            (name, email, password_hash)
+        )
+        user_id = cur.lastrowid
+        conn.commit()
+        return user_id
+    finally:
+        conn.close()
