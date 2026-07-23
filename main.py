@@ -1,14 +1,66 @@
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from functools import wraps
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from database.db import get_db, init_db, seed_db, create_user
+from database.db import get_db, init_db, seed_db, create_user, create_session, get_session, delete_session
 
 app = Flask(__name__)
 # In production, this should be loaded from environment variables
 app.secret_key = "spendwiser-dev-secret-key-12345"
+
+# JWT Configuration
+JWT_SECRET_KEY = "spendwiser-jwt-secret-key-abcdef123456"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_MINUTES = 15
+
+
+# ------------------------------------------------------------------ #
+# JWT Helper Functions                                               #
+# ------------------------------------------------------------------ #
+
+def generate_jwt_token(user_id: int) -> str:
+    """Generate a JWT token for the given user_id."""
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.utcnow() + timedelta(minutes=JWT_EXPIRY_MINUTES),
+        "iat": datetime.utcnow()
+    }
+    return pyjwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_jwt_token(token: str) -> dict | None:
+    """Decode and validate a JWT token. Returns payload or None if invalid."""
+    try:
+        payload = pyjwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return payload
+    except (InvalidTokenError, Exception):
+        return None
+
+
+def login_required(f):
+    """Decorator to require valid session token for a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = session.get("token")
+        if not token:
+            flash("Please log in to access this page.")
+            return redirect(url_for("login"))
+
+        # Verify token and check if session exists
+        user_id = get_session(token)
+        if not user_id:
+            session.clear()
+            flash("Session expired. Please log in again.")
+            return redirect(url_for("login"))
+
+        # Set user_id in session for use in route handlers
+        session["user_id"] = user_id
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 with app.app_context():
     init_db()
@@ -45,16 +97,22 @@ def register():
             flash("Passwords do not match.")
             return render_template("register.html")
 
-        # Insert via helper; create_user raises sqlite3.IntegrityError on a
-        # duplicate email (the users.email column is UNIQUE).
+        # Create user and session token
         try:
-            create_user(name, email, password)
-        except sqlite3.IntegrityError:
-            flash("Email already registered.")
-            return render_template("register.html")
+            user_id = create_user(name, email, password)
+            token = create_session(user_id)
 
-        flash("Account created successfully. Please sign in.")
-        return redirect(url_for("login"))
+            # Store token in session
+            session["token"] = token
+            session["user_id"] = user_id
+            session["user_name"] = name
+            return redirect(url_for("profile"))
+        except sqlite3.IntegrityError as e:
+            if str(e).startswith("UNIQUE constraint failed"):
+                flash("Email already exists")
+            else:
+                flash(str(e))
+            return render_template("register.html")
 
     return render_template("register.html")
 
@@ -64,23 +122,28 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
-        
+
         if not email or not password:
             return render_template("login.html", error="All fields are required.")
-            
+
         conn = get_db()
         cur = conn.cursor()
         cur.execute("SELECT id, name, password_hash FROM users WHERE email = ?", (email,))
         user = cur.fetchone()
         conn.close()
-        
+
         if user and check_password_hash(user["password_hash"], password):
+            # Create a session token in the database
+            token = create_session(user["id"])
+
+            # Store token in session
+            session["token"] = token
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
             return redirect(url_for("profile"))
         else:
             return render_template("login.html", error="Invalid email or password.")
-            
+
     return render_template("login.html")
 
 
@@ -104,7 +167,15 @@ def inject_now():
 
 @app.route("/logout")
 def logout():
+    # Delete session token from database
+    token = session.get("token")
+    if token:
+        delete_session(token)
+
+    # Clear all session data
     session.clear()
+
+    # Redirect to landing page
     return redirect(url_for("landing"))
 
 

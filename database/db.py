@@ -14,10 +14,11 @@ schema and constraints.
 """
 
 import sqlite3
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from werkzeug.security import generate_password_hash
 from flask import current_app
+import secrets
 
 # Path to the SQLite file – placed in the project root alongside ``main.py``.
 _DB_PATH = Path(__file__).resolve().parents[1] / "spendly.db"
@@ -79,6 +80,35 @@ def init_db():
             date TEXT NOT NULL,
             description TEXT,
             created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """
+    )
+    # Sessions table for JWT-based authentication
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            expiry TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """
+    )
+    # Refunds table for processing refunds
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS refunds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expense_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            reason TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT DEFAULT (datetime('now')),
+            processed_at TEXT,
+            FOREIGN KEY(expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
         """
@@ -153,5 +183,81 @@ def create_user(name: str, email: str, password: str) -> int:
         user_id = cur.lastrowid
         conn.commit()
         return user_id
+    finally:
+        conn.close()
+
+
+def create_session(user_id: int, expiry_minutes: int = 15) -> str:
+    """Create a new session token (JWT-like) with specified expiry.
+
+    Args:
+        user_id: The ID of the user
+        expiry_minutes: Session expiration time in minutes
+
+    Returns:
+        The generated session token
+    """
+    conn = get_db()
+    try:
+        # Generate a secure random token
+        token = secrets.token_hex(32)
+
+        # Calculate expiry time
+        expiry = datetime.now() + timedelta(minutes=expiry_minutes)
+
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO sessions (token, user_id, expiry) VALUES (?, ?, ?)",
+            (token, user_id, expiry.isoformat())
+        )
+        conn.commit()
+        return token
+    finally:
+        conn.close()
+
+
+def get_session(token: str) -> int | None:
+    """Look up a session token to get the associated user_id.
+
+    Args:
+        token: The session token to look up
+
+    Returns:
+        The user_id if valid and not expired, None otherwise
+    """
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT user_id, expiry FROM sessions WHERE token = ?", (token,))
+        result = cur.fetchone()
+        if not result:
+            return None
+
+        user_id, expiry_str = result
+        expiry = datetime.fromisoformat(expiry_str)
+
+        # Check if session has expired
+        if datetime.now() >= expiry:
+            # Session expired, delete it from DB
+            cur.execute("DELETE FROM sessions WHERE token = ?", (token,))
+            conn.commit()
+            return None
+
+        return user_id
+    finally:
+        conn.close()
+
+
+def delete_session(token: str) -> None:
+    """Delete a session token from the database.
+
+    Args:
+        token: The session token to delete
+    """
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
     finally:
         conn.close()
