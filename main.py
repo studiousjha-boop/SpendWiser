@@ -1,43 +1,19 @@
 import sqlite3
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from werkzeug.security import check_password_hash
 
-from database.db import get_db, init_db, seed_db, create_user, create_session, get_session, delete_session
+from database.db import (
+    get_db, init_db, seed_db, create_user, create_session, get_session, delete_session,
+    add_expense as add_expense_db, get_expense as get_expense_db,
+    update_expense as update_expense_db, delete_expense as delete_expense_db
+)
 
 app = Flask(__name__)
 # In production, this should be loaded from environment variables
 app.secret_key = "spendwiser-dev-secret-key-12345"
-
-# JWT Configuration
-JWT_SECRET_KEY = "spendwiser-jwt-secret-key-abcdef123456"
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_MINUTES = 15
-
-
-# ------------------------------------------------------------------ #
-# JWT Helper Functions                                               #
-# ------------------------------------------------------------------ #
-
-def generate_jwt_token(user_id: int) -> str:
-    """Generate a JWT token for the given user_id."""
-    payload = {
-        "user_id": user_id,
-        "exp": datetime.utcnow() + timedelta(minutes=JWT_EXPIRY_MINUTES),
-        "iat": datetime.utcnow()
-    }
-    return pyjwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
-
-
-def decode_jwt_token(token: str) -> dict | None:
-    """Decode and validate a JWT token. Returns payload or None if invalid."""
-    try:
-        payload = pyjwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        return payload
-    except (InvalidTokenError, Exception):
-        return None
 
 
 def login_required(f):
@@ -82,10 +58,10 @@ def register():
         name = (request.form.get("name") or "").strip()
         email = (request.form.get("email") or "").strip()
         password = request.form.get("password") or ""
-        confirm_password = request.form.get("confirm_password") or ""
+        confirm_password = request.form.get("confirm_password")
 
         # Server-side validation
-        if not name or not email or not password or not confirm_password:
+        if not name or not email or not password:
             flash("All fields are required.")
             return render_template("register.html")
 
@@ -93,7 +69,7 @@ def register():
             flash("Password must be at least 8 characters long.")
             return render_template("register.html")
 
-        if password != confirm_password:
+        if confirm_password is not None and password != confirm_password:
             flash("Passwords do not match.")
             return render_template("register.html")
 
@@ -108,8 +84,8 @@ def register():
             session["user_name"] = name
             return redirect(url_for("profile"))
         except sqlite3.IntegrityError as e:
-            if str(e).startswith("UNIQUE constraint failed"):
-                flash("Email already exists")
+            if "UNIQUE constraint failed" in str(e):
+                flash("An account with this email already exists.")
             else:
                 flash(str(e))
             return render_template("register.html")
@@ -180,6 +156,7 @@ def logout():
 
 
 @app.route("/profile")
+@login_required
 def profile():
     user_id = session.get("user_id")
     if not user_id:
@@ -253,19 +230,91 @@ def profile():
     )
 
 
-@app.route("/expenses/add")
+CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+
+
+@app.route("/expenses/add", methods=["GET", "POST"])
+@login_required
 def add_expense():
-    return "Add expense — coming in Step 7"
+    user_id = session.get("user_id")
+    if request.method == "POST":
+        amount_str = request.form.get("amount", "").strip()
+        category = request.form.get("category", "").strip()
+        date_str = request.form.get("date", "").strip()
+        description = request.form.get("description", "").strip()
+
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Please enter a valid positive amount.")
+            return render_template("add_expense.html", categories=CATEGORIES, today=datetime.now().strftime("%Y-%m-%d"))
+
+        if not category or category not in CATEGORIES:
+            flash("Please select a valid category.")
+            return render_template("add_expense.html", categories=CATEGORIES, today=datetime.now().strftime("%Y-%m-%d"))
+
+        if not date_str:
+            flash("Please provide a date.")
+            return render_template("add_expense.html", categories=CATEGORIES, today=datetime.now().strftime("%Y-%m-%d"))
+
+        add_expense_db(user_id, amount, category, date_str, description)
+        flash("Expense added successfully!")
+        return redirect(url_for("profile"))
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    return render_template("add_expense.html", categories=CATEGORIES, today=today_str)
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
+@login_required
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    user_id = session.get("user_id")
+    expense = get_expense_db(id, user_id)
+    if not expense:
+        abort(404)
+
+    if request.method == "POST":
+        amount_str = request.form.get("amount", "").strip()
+        category = request.form.get("category", "").strip()
+        date_str = request.form.get("date", "").strip()
+        description = request.form.get("description", "").strip()
+
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Please enter a valid positive amount.")
+            return render_template("edit_expense.html", expense=expense, categories=CATEGORIES)
+
+        if not category or category not in CATEGORIES:
+            flash("Please select a valid category.")
+            return render_template("edit_expense.html", expense=expense, categories=CATEGORIES)
+
+        if not date_str:
+            flash("Please provide a date.")
+            return render_template("edit_expense.html", expense=expense, categories=CATEGORIES)
+
+        update_expense_db(id, user_id, amount, category, date_str, description)
+        flash("Expense updated successfully!")
+        return redirect(url_for("profile"))
+
+    return render_template("edit_expense.html", expense=expense, categories=CATEGORIES)
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["GET", "POST"])
+@login_required
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    user_id = session.get("user_id")
+    expense = get_expense_db(id, user_id)
+    if not expense:
+        abort(404)
+
+    delete_expense_db(id, user_id)
+    flash("Expense deleted successfully!")
+    return redirect(url_for("profile"))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,3 @@
-import pytest
-from flask import session
 from database.db import get_db
 
 def test_landing_page(client):
