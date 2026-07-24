@@ -1,1 +1,6 @@
-// main.js — students will add JavaScript here as features are built
+// main.js — SpendWiser frontend interactivity
+document.addEventListener("DOMContentLoaded", function () {
+    if (typeof lucide !== "undefined") {
+        lucide.createIcons();
+    }
+});

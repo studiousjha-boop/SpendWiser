@@ -1,96 +1,117 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project overview
 
-## Project Overview
+Spendly is a lightweight personal expense tracker built with Flask and SQLite.
 
-**Spendly** (also branded **SpendWiser** — both names appear in the codebase) is a personal finance tracker that helps users log expenses, view category breakdowns, and filter spending by date range. The project is being built incrementally in numbered "steps" (DB setup, auth, expenses CRUD, etc.) — the README's route table marks unimplemented steps as 🚧.
-
-## Running the App
-
-```bash
-# Windows
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python main.py        # serves on http://127.0.0.1:5001 with debug=True (auto-reload)
-```
-
-```bash
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python main.py
-```
-
-> **Note:** `python3` is **not** available on this Windows machine — use `python` instead. The previous developer session hit this exact gotcha.
-
-## Running Tests
-
-```bash
-pytest                        # full suite
-pytest tests/test_foo.py      # single file
-pytest -k test_name           # by test name
-```
-
-Tests use `pytest` + `pytest-flask`. The `main.py` file is set up to be testable via `pytest-flask`'s fixture conventions; once `database/db.py` is implemented, tests will need an isolated test DB.
+---
 
 ## Architecture
+```
+spendly/
+├── app.py              # All routes — single file, no blueprints
+├── database/
+│   └── db.py           # SQLite helpers: get_db(), init_db(), seed_db()
+├── templates/
+│   ├── base.html       # Shared layout — all templates must extend this
+│   └── *.html          # One template per page
+├── static/
+│   ├── css/
+│   │   ├── style.css       # Global styles
+│   │   └── landing.css     # Landing-page-only styles
+│   └── js/
+│       └── main.js         # Vanilla JS only
+└── requirements.txt
+```
 
-### Entry point — `main.py`
+**Where things belong:**
+- New routes → `app.py` only, no blueprints
+- DB logic → `database/db.py` only, never inline in routes
+- New pages → new `.html` file extending `base.html`
+- Page-specific styles → new `.css` file, not inline `<style>` tags
 
-A single Flask app, no blueprints. Routes are flat top-level functions:
+---
 
-- **Live:** `/`, `/register`, `/login`, `/terms`, `/privacy`
-- **Stubs (return plain strings):** `/logout`, `/profile`, `/expenses/add`, `/expenses/<id>/edit`, `/expenses/<id>/delete`
-- A `@app.context_processor` named `inject_now` exposes `{{ now }}` to all templates — currently used by `base.html` for the footer year. It uses the deprecated `datetime.utcnow()` (warning in logs); switch to `datetime.now(timezone.utc)` when touching it.
+## Code style
 
-### Database — `database/db.py`
+- Python: PEP 8, snake_case for all variables and functions
+- Templates: Jinja2 with `url_for()` for every internal link — never hardcode URLs
+- Route functions: one responsibility only — fetch data, render template, done
+- DB queries: always use parameterized queries (`?` placeholders) — never f-strings in SQL
+- Error handling: use `abort()` for HTTP errors, not bare `return "error string"`
 
-A **stub** — students implement three functions here in Step 1:
-- `get_db()` — SQLite connection with `row_factory` + foreign keys enabled
-- `init_db()` — `CREATE TABLE IF NOT EXISTS` for all tables
-- `seed_db()` — sample data for development
+---
 
-The package's `__init__.py` is empty; it exists only to make `database` importable.
+## Tech constraints
 
-### Templates — `templates/`
+- **Flask only** — no FastAPI, no Django, no other web frameworks
+- **SQLite only** — no PostgreSQL, no SQLAlchemy ORM, no external DB
+- **Vanilla JS only** — no React, no jQuery, no npm packages
+- **No new pip packages** — work within `requirements.txt` as-is unless explicitly told otherwise
+- Python 3.10+ assumed — f-strings and `match` statements are fine
 
-Jinja2, all extend `base.html`. Block structure:
+---
 
-- `{% block title %}` — page `<title>`
-- `{% block head %}` — extra `<head>` content (rare)
-- `{% block content %}` — main page body
-- `{% block scripts %}` — extra JS at end of body
+## Subagent Policy
+- Always use a builtin explore subagent for codebase exploration 
+  before implementing any new feature
+- Always use a subagent to verify test results 
+  after any implementation
+- When asked to plan, delegate codebase research 
+  to a subagent before presenting the plan
+- always use a builtin plan subagent in plan mode
 
-`base.html` provides the navbar (brand "SpendWiser" + Sign in / Get started), a `<main class="main-content">` wrapper, and the footer (year via `{{ now.year }}`, terms/privacy links, brand mark).
+---
 
-### Styles — `static/css/style.css`
+## Commands
+```bash
+# Setup
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
-Single hand-written stylesheet, ~730 lines. Organized into comment-banded sections: Variables, Reset, Navbar, Main, Hero, Mock card, Buttons, Features, CTA, Auth, Footer, Responsive, Demo video modal. Uses CSS custom properties defined in `:root` (colors, fonts, radii, max-widths).
+# Run dev server (port 5001)
+python app.py
 
-**Constraint observed in this project:** when the user asks for visual edits to the hero, change **only** the hero-related CSS classes — leave other sections untouched. The hero uses classes like `.hero`, `.hero-inner`, `.hero-badge`, `.hero-title`, `.hero-subtitle`, `.hero-actions`, `.hero-visual`, `.mock-card`, `.mock-card-chrome`, `.mock-dot`, `.mock-card-body`, `.mock-stats`, `.mock-stat`, `.mock-stat-label`, `.mock-stat-value`, `.mock-stat-delta`, `.mock-stat-sub`, `.mock-bars`, `.mock-bar-row`, `.mock-cat`, `.mock-bar-track`, `.mock-bar`, `.mock-bar-food`, `.mock-bar-travel`, `.mock-bar-bills`.
+# Run all tests
+pytest
 
-### Frontend JS — `static/js/main.js`
+# Run a specific test file
+pytest tests/test_foo.py
 
-Currently empty. Page-specific inline scripts (e.g. the demo video modal in `landing.html`) live in their own template's `{% block scripts %}` rather than in `main.js`.
+# Run a specific test by name
+pytest -k "test_name"
 
-## Conventions
+# Run tests with output visible
+pytest -s
+```
 
-- **No build step.** Pure HTML/CSS/JS served by Flask's static handler.
-- **No CSS framework.** Hand-written CSS with custom properties.
-- **Fonts:** DM Serif Display (display) + DM Sans (body), loaded from Google Fonts in `base.html`.
-- **Currency:** rendered as `₹` (Indian rupee) throughout the mock content.
-- **Brand naming inconsistency:** README and navbar use "SpendWiser"; landing page uses "Spendly" (and page titles say "Spendly"). Don't silently change one to match the other without confirming — both may be intentional in different contexts.
+---
 
-## Key Files for Common Edits
+## Implemented vs stub routes
 
-| To change… | Edit |
+| Route | Status |
 |---|---|
-| Routes / add a new page | `main.py` |
-| Layout, navbar, footer, fonts | `templates/base.html` |
-| Landing page hero / mock card | `templates/landing.html` + `static/css/style.css` (hero block only) |
-| Auth forms | `templates/login.html`, `templates/register.html`, `static/css/style.css` (auth block) |
-| Color palette / spacing tokens | `static/css/style.css` `:root` |
-| DB schema / queries | `database/db.py` (currently a stub) |
+| `GET /` | Implemented — renders `landing.html` |
+| `GET /register` | Implemented — renders `register.html` |
+| `GET /login` | Implemented — renders `login.html` |
+| `GET /logout` | Stub — Step 3 |
+| `GET /profile` | Stub — Step 4 |
+| `GET /expenses/add` | Stub — Step 7 |
+| `GET /expenses/<id>/edit` | Stub — Step 8 |
+| `GET /expenses/<id>/delete` | Stub — Step 9 |
+
+**Do not implement a stub route unless the active task explicitly targets that step.**
+
+---
+
+## Warnings and things to avoid
+
+- **Never use raw string returns for stub routes** once a step is implemented — always render a template
+- **Never hardcode URLs** in templates — always use `url_for()`
+- **Never put DB logic in route functions** — it belongs in `database/db.py`
+- **Never install new packages** mid-feature without flagging it — keep `requirements.txt` in sync
+- **Never use JS frameworks** — the frontend is intentionally vanilla
+- **`database/db.py` is currently empty** — do not assume helpers exist until the step that implements them
+- **FK enforcement is manual** — SQLite foreign keys are off by default; `get_db()` must run `PRAGMA foreign_keys = ON` on every connection
+- The app runs on **port 5001**, not the Flask default 5000 — don't change this

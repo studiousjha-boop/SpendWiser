@@ -90,7 +90,27 @@ a { color: inherit; text-decoration: none; }
     font-size: 1.3rem;
 }
 
+.brand-icon-lucide {
+    width: 22px;
+    height: 22px;
+    color: var(--accent);
+    stroke-width: 2.2px;
+    vertical-align: middle;
+}
+
+.inline-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: -2px;
+    margin-right: 4px;
+}
+
 .brand-name { color: var(--ink); }
+
+/* Fintech Tabular Numbers for figures */
+.metric-value, .stat-value, .amount, .tx-amount, .table-amount {
+    font-variant-numeric: tabular-nums;
+}
 
 .nav-links {
     display: flex;

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .footer-legal {
             margin-top: 20px;
@@ -34,17 +35,25 @@
     <nav class="navbar">
         <div class="nav-inner">
             <a href="{{ url_for('landing') }}" class="nav-brand">
-                <span class="brand-icon">◈</span>
+                <i data-lucide="wallet" class="brand-icon-lucide"></i>
                 <span class="brand-name">SpendWiser</span>
             </a>
             <div class="nav-links">
                 {% if session.get('user_id') %}
                     <span class="nav-welcome" style="color: var(--ink-muted);">Hi, {{ session.get('user_name') }}</span>
-                    <a href="{{ url_for('profile') }}">Profile</a>
-                    <a href="{{ url_for('logout') }}" class="nav-cta">Sign out</a>
+                    <a href="{{ url_for('profile') }}" class="nav-item-icon">
+                        <i data-lucide="user" class="inline-icon"></i> Profile
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="nav-cta">
+                        <i data-lucide="log-out" class="inline-icon"></i> Sign out
+                    </a>
                 {% else %}
-                    <a href="{{ url_for('login') }}">Sign in</a>
-                    <a href="{{ url_for('register') }}" class="nav-cta">Get started</a>
+                    <a href="{{ url_for('login') }}">
+                        <i data-lucide="log-in" class="inline-icon"></i> Sign in
+                    </a>
+                    <a href="{{ url_for('register') }}" class="nav-cta">
+                        <i data-lucide="user-plus" class="inline-icon"></i> Get started
+                    </a>
                 {% endif %}
             </div>
         </div>
@@ -56,7 +65,7 @@
 
     <footer class="footer">
         <div class="footer-inner">
-            <span class="brand-icon">◈</span>
+            <i data-lucide="wallet" class="brand-icon-lucide"></i>
             <span class="footer-name">SpendWiser</span>
             <p class="footer-copy">Track every rupee. Own your finances.</p>
             <div class="footer-legal">
@@ -70,6 +79,11 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -261,3 +261,89 @@ def delete_session(token: str) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def add_expense(user_id: int, amount: float, category: str, date_str: str, description: str = "") -> int:
+    """Add a new expense for a user.
+
+    Returns:
+        The new expense ID
+    """
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, date_str, description),
+        )
+        expense_id = cur.lastrowid
+        conn.commit()
+        return expense_id
+    finally:
+        conn.close()
+
+
+def get_expense(expense_id: int, user_id: int) -> sqlite3.Row | None:
+    """Retrieve an expense by ID ensuring it belongs to user_id."""
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, user_id, amount, category, date, description, created_at FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        return cur.fetchone()
+    finally:
+        conn.close()
+
+
+def update_expense(expense_id: int, user_id: int, amount: float, category: str, date_str: str, description: str = "") -> bool:
+    """Update an existing expense belonging to user_id.
+
+    Returns:
+        True if updated, False otherwise
+    """
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? WHERE id = ? AND user_id = ?",
+            (amount, category, date_str, description, expense_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def delete_expense(expense_id: int, user_id: int) -> bool:
+    """Delete an expense belonging to user_id.
+
+    Returns:
+        True if deleted, False otherwise
+    """
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def get_user_expenses(user_id: int) -> list[sqlite3.Row]:
+    """Retrieve all expenses for user_id sorted by date descending."""
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, user_id, amount, category, date, description, created_at FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
+            (user_id,),
+        )
+        return cur.fetchall()
+    finally:
+        conn.close()
