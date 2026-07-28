@@ -291,7 +291,7 @@
             </div>
             <h2 class="profile-name">{{ user['name'] }}</h2>
             <p class="profile-email">{{ user['email'] }}</p>
-            
+
             <div class="profile-meta">
                 <div class="meta-item">
                     <span>Member since</span>
@@ -303,7 +303,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="profile-card" style="padding: 1.5rem; text-align: left;">
             <h3 style="font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.75rem;">Account Actions</h3>
             <a href="{{ url_for('logout') }}" class="btn-submit" style="display: block; text-align: center; text-decoration: none; margin-top: 0; background: var(--danger-light); color: var(--danger); border: 1px solid #f5c6c2;">
@@ -338,7 +338,7 @@
             <h3 class="panel-title">
                 <span>Spending by Category</span>
             </h3>
-            
+
             {% if total_spending > 0 %}
                 <div class="category-list">
                     {% for cat in category_breakdown %}
@@ -361,6 +361,27 @@
                     No expense data available to display breakdown.
                 </div>
             {% endif %}
+        </section>
+
+        <!-- Date Filter Form -->
+        <section class="dashboard-panel" style="padding: 1.5rem;">
+            <h3 class="panel-title" style="margin-bottom: 1rem;">
+                <span>Filter by Date</span>
+            </h3>
+            <form method="GET" action="{{ url_for('profile') }}" style="display: flex; gap: 1rem; align-items: end; flex-wrap: wrap;">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <label for="start_date" style="font-size: 0.85rem; font-weight: 500; color: var(--ink-soft);">From</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.9rem;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <label for="end_date" style="font-size: 0.85rem; font-weight: 500; color: var(--ink-soft);">To</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.9rem;">
+                </div>
+                <button type="submit" class="btn-submit" style="height: fit-content; padding: 0.5rem 1.25rem;">Apply Filter</button>
+                {% if start_date or end_date %}
+                    <a href="{{ url_for('profile') }}" class="btn-submit" style="height: fit-content; padding: 0.5rem 1.25rem; background: var(--ink-muted); color: var(--paper);">Clear</a>
+                {% endif %}
+            </form>
         </section>
 
         <!-- Recent Activity -->

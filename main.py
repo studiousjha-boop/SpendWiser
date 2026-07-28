@@ -161,10 +161,14 @@ def profile():
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("login"))
-        
+
+    # Get date filter from query parameters
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
     conn = get_db()
     cur = conn.cursor()
-    
+
     # Fetch user info
     cur.execute("SELECT name, email, created_at FROM users WHERE id = ?", (user_id,))
     user = cur.fetchone()
@@ -172,7 +176,7 @@ def profile():
         session.clear()
         conn.close()
         return redirect(url_for("login"))
-        
+
     # Format created_at date nicely
     created_at_str = user["created_at"]
     join_date = created_at_str
@@ -186,25 +190,34 @@ def profile():
             join_date = dt.strftime("%B %d, %Y")
         except Exception:
             pass
-            
-    # Fetch user's expenses
-    cur.execute(
-        "SELECT id, amount, category, date, description FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
-        (user_id,)
-    )
+
+    # Fetch user's expenses (with optional date range filter)
+    if start_date and end_date:
+        cur.execute(
+            """SELECT id, amount, category, date, description
+               FROM expenses
+               WHERE user_id = ? AND date BETWEEN ? AND ?
+               ORDER BY date DESC, id DESC""",
+            (user_id, start_date, end_date)
+        )
+    else:
+        cur.execute(
+            "SELECT id, amount, category, date, description FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
+            (user_id,)
+        )
     expenses = [dict(row) for row in cur.fetchall()]
     conn.close()
-    
+
     total_spending = sum(exp["amount"] for exp in expenses)
     total_count = len(expenses)
     avg_spending = total_spending / total_count if total_count > 0 else 0.0
-    
+
     # Calculate category breakdown
     category_totals = {}
     for exp in expenses:
         cat = exp["category"]
         category_totals[cat] = category_totals.get(cat, 0.0) + exp["amount"]
-        
+
     category_breakdown = []
     for cat, total in category_totals.items():
         pct = (total / total_spending * 100) if total_spending > 0 else 0
@@ -215,9 +228,9 @@ def profile():
         })
     # Sort categories by total spending descending
     category_breakdown.sort(key=lambda x: x["total"], reverse=True)
-    
+
     recent_expenses = expenses[:5]
-    
+
     return render_template(
         "profile.html",
         user=user,
@@ -226,7 +239,9 @@ def profile():
         total_count=total_count,
         avg_spending=avg_spending,
         category_breakdown=category_breakdown,
-        recent_expenses=recent_expenses
+        recent_expenses=recent_expenses,
+        start_date=start_date,
+        end_date=end_date
     )
 
 
@@ -319,4 +334,3 @@ def delete_expense(id):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
-
