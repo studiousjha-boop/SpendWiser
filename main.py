@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
@@ -9,6 +9,10 @@ from database.db import (
     get_db, init_db, seed_db, create_user, create_session, get_session, delete_session,
     add_expense as add_expense_db, get_expense as get_expense_db,
     update_expense as update_expense_db, delete_expense as delete_expense_db
+)
+from database.queries import (
+    get_user_by_id, get_summary_stats,
+    get_recent_transactions, get_category_breakdown,
 )
 
 app = Flask(__name__)
@@ -161,72 +165,87 @@ def profile():
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("login"))
-        
-    conn = get_db()
-    cur = conn.cursor()
-    
-    # Fetch user info
-    cur.execute("SELECT name, email, created_at FROM users WHERE id = ?", (user_id,))
-    user = cur.fetchone()
+
+    # ------------------------------------------------------------------ #
+    # Date filter: read and validate query parameters                    #
+    # ------------------------------------------------------------------ #
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+
+    # Track which preset button should be highlighted (if any)
+    active_filter = ""
+
+    # Handle preset quick-select buttons
+    preset = request.args.get("preset")
+    if preset:
+        today = date.today()
+        if preset == "this_month":
+            date_from = today.replace(day=1).isoformat()
+            date_to = today.isoformat()
+            active_filter = "this_month"
+        elif preset == "last_3_months":
+            date_from = (today - timedelta(days=90)).isoformat()
+            date_to = today.isoformat()
+            active_filter = "last_3_months"
+        elif preset == "last_6_months":
+            date_from = (today - timedelta(days=180)).isoformat()
+            date_to = today.isoformat()
+            active_filter = "last_6_months"
+        elif preset == "all":
+            date_from = None
+            date_to = None
+            active_filter = "all"
+
+    # Validate ISO date format — treat malformed values as absent
+    if date_from:
+        try:
+            datetime.strptime(date_from, "%Y-%m-%d")
+        except ValueError:
+            date_from = None
+    if date_to:
+        try:
+            datetime.strptime(date_to, "%Y-%m-%d")
+        except ValueError:
+            date_to = None
+
+    # Reject inverted ranges
+    if date_from and date_to and date_from > date_to:
+        flash("Start date must be before end date.")
+        date_from = None
+        date_to = None
+
+    # ------------------------------------------------------------------ #
+    # Fetch data via query helpers                                       #
+    # ------------------------------------------------------------------ #
+    user = get_user_by_id(user_id)
     if not user:
         session.clear()
-        conn.close()
         return redirect(url_for("login"))
-        
-    # Format created_at date nicely
-    created_at_str = user["created_at"]
-    join_date = created_at_str
-    try:
-        dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-        join_date = dt.strftime("%B %d, %Y")
-    except Exception:
-        try:
-            # Fallback parsing YYYY-MM-DD HH:MM:SS
-            dt = datetime.strptime(created_at_str.split()[0], "%Y-%m-%d")
-            join_date = dt.strftime("%B %d, %Y")
-        except Exception:
-            pass
-            
-    # Fetch user's expenses
-    cur.execute(
-        "SELECT id, amount, category, date, description FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
-        (user_id,)
-    )
-    expenses = [dict(row) for row in cur.fetchall()]
-    conn.close()
-    
-    total_spending = sum(exp["amount"] for exp in expenses)
-    total_count = len(expenses)
+
+    stats = get_summary_stats(user_id, date_from, date_to)
+    recent = get_recent_transactions(user_id, 5, date_from, date_to)
+    breakdown = get_category_breakdown(user_id, date_from, date_to)
+
+    total_spending = stats["total_spent"]
+    total_count = stats["transaction_count"]
     avg_spending = total_spending / total_count if total_count > 0 else 0.0
-    
-    # Calculate category breakdown
-    category_totals = {}
-    for exp in expenses:
-        cat = exp["category"]
-        category_totals[cat] = category_totals.get(cat, 0.0) + exp["amount"]
-        
-    category_breakdown = []
-    for cat, total in category_totals.items():
-        pct = (total / total_spending * 100) if total_spending > 0 else 0
-        category_breakdown.append({
-            "category": cat,
-            "total": total,
-            "pct": pct
-        })
-    # Sort categories by total spending descending
-    category_breakdown.sort(key=lambda x: x["total"], reverse=True)
-    
-    recent_expenses = expenses[:5]
-    
+
+    # Determine active filter highlighting for non-preset cases
+    if not active_filter:
+        active_filter = "custom" if (date_from or date_to) else "all"
+
     return render_template(
         "profile.html",
         user=user,
-        join_date=join_date,
+        join_date=user["member_since"],
         total_spending=total_spending,
         total_count=total_count,
         avg_spending=avg_spending,
-        category_breakdown=category_breakdown,
-        recent_expenses=recent_expenses
+        category_breakdown=breakdown,
+        recent_expenses=recent,
+        date_from=date_from,
+        date_to=date_to,
+        active_filter=active_filter,
     )
 
 
@@ -319,4 +338,3 @@ def delete_expense(id):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
-
