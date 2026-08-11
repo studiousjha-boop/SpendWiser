@@ -1,0 +1,190 @@
+/* ------------------------------------------------------------------ */
+/* Analytics – Coming Soon page                                        */
+/* ------------------------------------------------------------------ */
+
+.analytics-section {
+    min-height: calc(100vh - 60px - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Card                                                                */
+/* ------------------------------------------------------------------ */
+
+.analytics-card {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    background: var(--paper-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+    padding: 3rem 2.5rem 2.5rem;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ */
+/* Decorative corner blobs                                            */
+/* ------------------------------------------------------------------ */
+
+.analytics-card::before,
+.analytics-card::after {
+    content: '';
+    position: absolute;
+    border-radius: 50% 50% 50% 50%;
+    background: var(--paper-warm);
+    opacity: 0.55;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.analytics-card::before {
+    width: 200px;
+    height: 200px;
+    top: -50px;
+    right: -50px;
+    border-radius: 60% 40% 50% 50% / 50% 60% 40% 50%;
+}
+
+.analytics-card::after {
+    width: 180px;
+    height: 180px;
+    bottom: -40px;
+    left: -40px;
+    border-radius: 40% 50% 50% 60% / 50% 40% 60% 50%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Icon                                                                */
+/* ------------------------------------------------------------------ */
+
+.analytics-icon {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: #263228;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.analytics-icon .inline-icon {
+    width: 36px;
+    height: 36px;
+    color: #ffffff;
+    stroke-width: 2px;
+    vertical-align: -2px;
+    margin-right: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Badge                                                               */
+/* ------------------------------------------------------------------ */
+
+.analytics-badge {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: linear-gradient(135deg, #1a472a 0%, #2a5c3a 100%);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.45rem 1.1rem;
+    border-radius: 999px;
+    margin-bottom: 1.25rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Title                                                               */
+/* ------------------------------------------------------------------ */
+
+.analytics-title {
+    position: relative;
+    z-index: 1;
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Subtitle                                                            */
+/* ------------------------------------------------------------------ */
+
+.analytics-subtitle {
+    position: relative;
+    z-index: 1;
+    font-size: 0.95rem;
+    color: #6b7280;
+    line-height: 1.7;
+    max-width: 400px;
+    margin: 0 auto 1.75rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Decorative dots                                                     */
+/* ------------------------------------------------------------------ */
+
+.analytics-dots {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.analytics-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--border);
+    animation: dot-flow 1.6s ease-in-out infinite;
+}
+
+.analytics-dot:nth-child(2) { animation-delay: 0.25s; }
+.analytics-dot:nth-child(3) { animation-delay: 0.5s; }
+
+@keyframes dot-flow {
+    0%, 15%   { background: var(--accent); }
+    30%, 100% { background: var(--border); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Bottom tagline                                                      */
+/* ------------------------------------------------------------------ */
+
+.analytics-tagline {
+    position: relative;
+    z-index: 1;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive                                                          */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+    .analytics-section {
+        padding: 2rem 1rem;
+    }
+    .analytics-card {
+        padding: 2.5rem 1.5rem 2rem;
+    }
+}

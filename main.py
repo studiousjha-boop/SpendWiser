@@ -137,6 +137,12 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/analytics")
+@login_required
+def analytics():
+    return render_template("analytics.html")
+
+
 @app.context_processor
 def inject_now():
     return {"now": datetime.now(timezone.utc)}
